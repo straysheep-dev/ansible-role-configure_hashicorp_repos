@@ -1,0 +1,8 @@
+---
+# SPDX-License-Identifier: MIT
+#
+# Variables injected into all molecule plays for this scenario.
+# Use this file to avoid modifying converge.yml while preparing
+# unique usage of the role that verify.yml can test.
+#
+# https://docs.ansible.com/projects/ansible/latest/inventory_guide/intro_inventory.html#organizing-host-and-group-variables
