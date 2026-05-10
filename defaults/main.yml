@@ -1,3 +1,42 @@
 # SPDX-License-Identifier: MIT
 ---
-# defaults file for role_name
+# defaults file for configure_hashicorp_repos
+
+# HashiCorp signing key fingerprints.
+# Every fingerprint listed here must be present in the downloaded key file before any package manager action is taken.
+# Sources:
+# - https://www.hashicorp.com/trust/security
+# - https://apt.releases.hashicorp.com/gpg
+# - https://rpm.releases.hashicorp.com/gpg
+# Fingerprints are formatted as displayed by `gpg --with-fingerprint` (spaced groups of 4).
+# verify-signing-keys.yml accepts the 40 hex characters with or without spaces, case-insensitive.
+hashicorp_signing_key_fingerprints:
+  - "798A EC65 4E5C 1542 8C8E 42EE AA16 FCBC A621 E701"
+
+# HashiCorp keyring URL and paths.
+# The same key bytes are served from both apt.releases.hashicorp.com/gpg and rpm.releases.hashicorp.com/gpg;
+# either URL can be used on either OS family. The apt URL is the canonical default.
+hashicorp_keyring_url: "https://apt.releases.hashicorp.com/gpg"
+hashicorp_keyring_tmp: "/tmp/hashicorp-archive-keyring.asc"
+hashicorp_keyring_path: "{{ '/etc/apt/keyrings/hashicorp-archive-keyring.asc' if ansible_facts['os_family'] == 'Debian'
+                            else '/etc/pki/rpm-gpg/RPM-GPG-KEY-hashicorp' if ansible_facts['os_family'] == 'RedHat' }}"
+
+# HashiCorp repository base URL.
+# Used as `uris` in the apt deb822_repository task and as `baseurl` in the dnf yum_repository task.
+# Repo variables ($releasever, $basearch) are intentional, they're resolved by dnf at runtime.
+# https://dnf5.readthedocs.io/en/latest/dnf5.conf.5.html#repo-variables
+hashicorp_repo_url: "{{ 'https://apt.releases.hashicorp.com' if ansible_facts['os_family'] == 'Debian'
+                        else 'https://rpm.releases.hashicorp.com/fedora/$releasever/$basearch/stable' if ansible_facts['distribution'] == 'Fedora'
+                        else 'https://rpm.releases.hashicorp.com/RHEL/$releasever/$basearch/stable' if ansible_facts['os_family'] == 'RedHat' }}"
+
+# Apt packages to pin to the HashiCorp origin at priority 1001 so they win over the distro's archive.
+# Ubuntu universe ships several of these (packer, terraform, vagrant), so without a pin you may end up
+# installing the distro's older version. Extend this list if you start using additional HashiCorp products.
+hashicorp_pinned_packages:
+  - boundary
+  - consul
+  - nomad
+  - packer
+  - terraform
+  - vagrant
+  - vault

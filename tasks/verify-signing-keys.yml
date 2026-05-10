@@ -1,0 +1,33 @@
+# SPDX-License-Identifier: MIT
+---
+# tasks/verify-signing-keys.yml
+# Reusable include: asserts that the GPG key file at verify_key_path contains every fingerprint in verify_key_fingerprints.
+#
+# Input vars:
+#   verify_key_path: absolute path to the (ASCII or binary) key file on disk
+#   verify_key_fingerprints: list of expected 40-character fingerprints (spaces optional, case-insensitive)
+#
+# See https://github.com/drduh/yubikey-guide for more gpg key operations.
+
+- name: Extract GPG fingerprints (machine-readable)
+  ansible.builtin.command:
+    cmd: gpg --no-keyring --with-fingerprint --with-colons "{{ verify_key_path }}"
+  register: gpg_fpr
+  changed_when: false
+
+# The regex_findall() filter will extract only the substring here ([A-F0-9]{40}) which is the 40 character hex
+# of the key fingerprint.
+# We'll normalize all strings to uppercase and ensure the output format is a list for the next task's loop.
+# https://docs.ansible.com/projects/ansible/latest/collections/ansible/builtin/regex_findall_filter.html
+- name: Parse found fingerprints
+  ansible.builtin.set_fact:
+    found_fps: "{{ gpg_fpr.stdout | regex_findall('^fpr:{9}([A-F0-9]{40})', multiline=True) | map('upper') | list }}"
+
+# item | replace(' ', '')... replaces any spaces in key fingerprints listed in defaults/main.yml
+# so the comaprison to machine-readable keys works with human-readable variables.
+- name: Assert all expected fingerprints present
+  ansible.builtin.assert:
+    that: (item | replace(' ', '') | upper) in found_fps
+    fail_msg: "FINGERPRINT MISMATCH {{ item }} not found in {{ verify_key_path }}"
+    success_msg: "OK {{ item }}"
+  loop: "{{ verify_key_fingerprints }}"

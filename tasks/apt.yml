@@ -1,0 +1,97 @@
+# SPDX-License-Identifier: MIT
+---
+# configure_hashicorp_repos/tasks/apt.yml
+# https://developer.hashicorp.com/packer/install
+# https://www.hashicorp.com/trust/security
+
+- name: Ensure dependencies are present
+  ansible.builtin.apt:
+    pkg:
+      - gpg
+      - python3-debian
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+  become: true
+  become_method: ansible.builtin.sudo
+
+- name: Ensure /etc/apt/keyrings exists
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  become: true
+  become_method: ansible.builtin.sudo
+
+- name: Download HashiCorp signing key
+  ansible.builtin.get_url:
+    url: "{{ hashicorp_keyring_url }}"
+    dest: "{{ hashicorp_keyring_tmp }}"
+    mode: '0644'
+
+- name: Verify HashiCorp signing key fingerprints
+  ansible.builtin.include_tasks: verify-signing-keys.yml
+  vars:
+    verify_key_path: "{{ hashicorp_keyring_tmp }}"
+    verify_key_fingerprints: "{{ hashicorp_signing_key_fingerprints }}"
+
+- name: Install HashiCorp keyring
+  ansible.builtin.copy:
+    remote_src: true
+    src: "{{ hashicorp_keyring_tmp }}"
+    dest: "{{ hashicorp_keyring_path }}"
+    owner: root
+    group: root
+    mode: '0644'
+  become: true
+  become_method: ansible.builtin.sudo
+
+# Gets the architecture string that apt requires, where ansible_architecture prints the kernel
+# string. You can compare the difference using this command:
+# ansible localhost -m setup -a 'filter=ansible_architecture' && dpkg --print-architecture
+# https://docs.ansible.com/projects/ansible/latest/collections/ansible/builtin/setup_module.html
+- name: Get dpkg architecture
+  ansible.builtin.command:
+    cmd: dpkg --print-architecture
+  register: hashicorp_dpkg_arch
+  changed_when: false
+
+- name: Add HashiCorp apt repository
+  ansible.builtin.deb822_repository:
+    name: hashicorp
+    types: deb
+    uris: "{{ hashicorp_repo_url }}"
+    suites: "{{ ansible_facts['distribution_release'] }}"
+    components: main
+    architectures:
+      - "{{ hashicorp_dpkg_arch.stdout }}"
+    signed_by: "{{ hashicorp_keyring_path }}"
+  become: true
+  become_method: ansible.builtin.sudo
+
+# Ansible has a filter just for pulling components from url strings.
+# https://docs.ansible.com/projects/ansible/latest/collections/ansible/builtin/urlsplit_filter.html
+# The higher priority number wins in apt.
+# https://wiki.debian.org/AptConfiguration#Changing_priorities
+- name: Pin HashiCorp packages to {{ hashicorp_keyring_url | urlsplit('hostname') }}
+  ansible.builtin.copy:
+    dest: /etc/apt/preferences.d/hashicorp
+    content: |
+      Package: {{ hashicorp_pinned_packages | join(' ') }}
+      Pin: origin {{ hashicorp_keyring_url | urlsplit('hostname') }}
+      Pin-Priority: 1001
+    owner: root
+    group: root
+    mode: '0644'
+  become: true
+  become_method: ansible.builtin.sudo
+
+# Refresh the cache so the new repo is visible to follow-on roles installing HashiCorp packages.
+- name: Update apt cache
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 0
+  become: true
+  become_method: ansible.builtin.sudo

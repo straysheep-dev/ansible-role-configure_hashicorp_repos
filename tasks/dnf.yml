@@ -1,0 +1,66 @@
+# SPDX-License-Identifier: MIT
+---
+# configure_hashicorp_repos/tasks/dnf.yml
+# https://developer.hashicorp.com/packer/install
+# https://www.hashicorp.com/trust/security
+
+- name: Ensure /etc/pki/rpm-gpg exists
+  ansible.builtin.file:
+    path: /etc/pki/rpm-gpg
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  become: true
+  become_method: ansible.builtin.sudo
+
+- name: Download HashiCorp signing key
+  ansible.builtin.get_url:
+    url: "{{ hashicorp_keyring_url }}"
+    dest: "{{ hashicorp_keyring_tmp }}"
+    mode: '0644'
+
+- name: Verify HashiCorp signing key fingerprints
+  ansible.builtin.include_tasks: verify-signing-keys.yml
+  vars:
+    verify_key_path: "{{ hashicorp_keyring_tmp }}"
+    verify_key_fingerprints: "{{ hashicorp_signing_key_fingerprints }}"
+
+# Imports the signing key into the RPM database. This is not a referenceable key file.
+- name: Import HashiCorp signing key
+  ansible.builtin.rpm_key:
+    state: present
+    key: "{{ hashicorp_keyring_tmp }}"
+    fingerprint: "{{ item | replace(' ', '') }}"
+  loop: "{{ hashicorp_signing_key_fingerprints }}"
+  become: true
+  become_method: ansible.builtin.sudo
+
+# Installs the key as a referenceable file under /etc/pki/rpm-gpg/*, the RPM equivalent of
+# /etc/apt/keyrings/*. Used so we reference a local key file we've already validated instead of
+# a remote URI for headless workflows.
+- name: Install HashiCorp keyring
+  ansible.builtin.copy:
+    remote_src: true
+    src: "{{ hashicorp_keyring_tmp }}"
+    dest: "{{ hashicorp_keyring_path }}"
+    owner: root
+    group: root
+    mode: '0644'
+  become: true
+  become_method: ansible.builtin.sudo
+
+# Because this is happening headless, an operator cannot review key signatures before enabling a repo.
+# Instead we mirror the deb822 module here with the yum module to define the repo config locally once
+# we have the verified signing key. Obtain repo details from `curl https://rpm.releases.hashicorp.com/RHEL/hashicorp.repo`.
+# https://docs.ansible.com/projects/ansible/latest/collections/ansible/builtin/yum_repository_module.html
+- name: Add HashiCorp dnf repository
+  ansible.builtin.yum_repository:
+    name: hashicorp
+    description: HashiCorp Stable - $basearch
+    baseurl: "{{ hashicorp_repo_url }}"
+    gpgkey: "{{ hashicorp_keyring_path }}"
+    gpgcheck: true
+    enabled: true
+  become: true
+  become_method: ansible.builtin.sudo

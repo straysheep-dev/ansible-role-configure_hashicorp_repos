@@ -1,54 +1,91 @@
-role_name
-=========
+configure_hashicorp_repos
+=========================
 
-![molecule workflow](https://github.com/straysheep-dev/ansible-role-template/actions/workflows/molecule.yml/badge.svg) ![ansible-lint workflow](https://github.com/straysheep-dev/ansible-role-template/actions/workflows/ansible-lint.yml/badge.svg)
+![molecule workflow](https://github.com/straysheep-dev/ansible-role-configure_hashicorp_repos/actions/workflows/molecule.yml/badge.svg) ![ansible-lint workflow](https://github.com/straysheep-dev/ansible-role-configure_hashicorp_repos/actions/workflows/ansible-lint.yml/badge.svg)
 
-A brief description of the role goes here.
+Configures the [HashiCorp](https://www.hashicorp.com/trust/security) software repository on Debian and RedHat family systems.
 
-> [!NOTE]
-> 1. To initialize submodules in this template, do: `git submodule update --init --recursive`
-> 2. Replace all instances of `role_name` with the actual `role_name`, **EXCEPT FOR `role_name_check: 1` in `molecule.yml`**
-> 3. Replace all instances of `ansible-role-template` with `ansible-role-<role_name>`
-> 4. To update submodules, do: `git submodule update --remote --recursive`, see [straysheep.dev/blog/resources/#git](https://straysheep.dev/blog/2019/07/15/-resources/#git)
+GPG key fingerprints are verified against known values before any package manager action is taken. The reusable verification task lives at `tasks/verify-signing-keys.yml` and accepts `verify_key_path` and `verify_key_fingerprints` as parameters via the include's `vars:`.
 
-> [!IMPORTANT]
-> **Git Submodules & CI**: The dockerfiles for molecule tests are maintained in a [monorepo](https://github.com/straysheep-dev/docker-configs) as submodules for maintainability / repeatability across all roles. Because of this, the CI workflow requires `actions/checkout` to have `submodules: 'recursive'`.
+Tested on Debian family (Debian, Ubuntu) and RedHat family (Fedora, Rocky) distributions.
 
-> [!TIP]
-> For local development, don't forget to symlink your `<namespace>.<role_name>` to one of the paths Ansible expects roles to exist under. This is the alternative to using a relative file path in `molecule/converge.yml`.
->
-> ```bash
-> ln -s ~/src/ansible-role-role_name ~/.ansible/roles/<namespace>.role_name
-> ```
+- https://www.hashicorp.com/trust/security
+- https://developer.hashicorp.com/packer/install
 
 Requirements
 ------------
 
-Any pre-requisites that may not be covered by Ansible itself or the role should be mentioned here. For instance, if the role uses the EC2 module, it may be a good idea to mention in this section that the boto package is required.
+- `gpg` must be available on the target host for key fingerprint verification (used by `verify-signing-keys.yml`).
+- **Debian family**: `ansible.builtin.deb822_repository` requires `python3-debian` on the target.
+- **RedHat family**: `ansible.builtin.yum_repository` and `ansible.builtin.rpm_key` are used; no additional dependencies beyond a standard DNF system.
 
 Role Variables
 --------------
 
-A description of the settable variables for this role should go here, including any variables that are in defaults/main.yml, vars/main.yml, and any variables that can/should be set via parameters to the role. Any variables that are read from other roles and/or the global scope (ie. hostvars, group vars, etc.) should be mentioned here as well.
+All variables are in `defaults/main.yml`. Key download and install paths are consolidated where possible; OS-specific paths are resolved via Jinja2 conditionals in the defaults so both task files share the same variable names.
+
+`hashicorp_signing_key_fingerprints`, list of expected GPG fingerprints. Spaces are optional; `verify-signing-keys.yml` normalizes them automatically before comparison. Should only be updated when HashiCorp publishes new signing keys and the new fingerprints have been confirmed against the official documentation.
+
+```yaml
+hashicorp_signing_key_fingerprints:
+  - "798A EC65 4E5C 1542 8C8E 42EE AA16 FCBC A621 E701"
+```
+
+`hashicorp_keyring_url`, ASCII-armored signing key download URL. Used by both Debian and RedHat paths. The same key bytes are served from both `apt.releases.hashicorp.com/gpg` and `rpm.releases.hashicorp.com/gpg`.
+
+```yaml
+hashicorp_keyring_url: "https://apt.releases.hashicorp.com/gpg"
+```
+
+`hashicorp_keyring_tmp`, temporary download path for the signing key before verification and installation.
+
+```yaml
+hashicorp_keyring_tmp: "/tmp/hashicorp-archive-keyring.asc"
+```
+
+`hashicorp_keyring_path`, final install path for the signing key. Mirrors the APT keyring convention on Debian and the RPM PKI path convention on RedHat, so the repo configuration can reference a local file instead of a remote URI.
+
+```yaml
+hashicorp_keyring_path: "{{ '/etc/apt/keyrings/hashicorp-archive-keyring.asc' if ansible_facts['os_family'] == 'Debian'
+                            else '/etc/pki/rpm-gpg/RPM-GPG-KEY-hashicorp' if ansible_facts['os_family'] == 'RedHat' }}"
+```
+
+`hashicorp_repo_url`, repository base URL. Used as `uris` in the apt `deb822_repository` task and as `baseurl` in the dnf `yum_repository` task. The yum macros (`$releasever`, `$basearch`) are intentional and resolved by the dnf layer at runtime.
+
+```yaml
+hashicorp_repo_url: "{{ 'https://apt.releases.hashicorp.com' if ansible_facts['os_family'] == 'Debian'
+                        else 'https://rpm.releases.hashicorp.com/fedora/$releasever/$basearch/stable' if ansible_facts['distribution'] == 'Fedora'
+                        else 'https://rpm.releases.hashicorp.com/RHEL/$releasever/$basearch/stable' if ansible_facts['os_family'] == 'RedHat' }}"
+```
+
+`hashicorp_pinned_packages`, list of apt packages pinned to the HashiCorp origin at priority 1001 so they win over the distro's archive. Ubuntu universe ships several of these (`packer`, `terraform`, `vagrant`); without a pin you may end up with the older distro version.
+
+```yaml
+hashicorp_pinned_packages:
+  - boundary
+  - consul
+  - nomad
+  - packer
+  - terraform
+  - vagrant
+  - vault
+  - waypoint
+```
 
 Dependencies
 ------------
 
-A list of other roles hosted on Galaxy should go here, plus any details in regards to parameters that may need to be set for other roles, or variables that are used from other roles.
+None.
 
 Example Playbook
 ----------------
 
-Including an example of how to use your role (for instance, with variables passed in as parameters) is always nice for users too:
-
 ```yml
 - name: "Default Playbook"
   hosts: all
-    #some_group
   roles:
-    - role: straysheep_dev.role_name
+    - role: configure_hashicorp_repos
 ```
-
 
 License
 -------
