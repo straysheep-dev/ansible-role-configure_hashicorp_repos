@@ -96,3 +96,8 @@ Author Information
 ------------------
 
 [straysheep-dev/ansible-configs](https://github.com/straysheep-dev/ansible-configs)
+
+> [!NOTE]
+> **AI-assisted Authorship**
+>
+> Drafts, examples, and research generated using [Claude](https://claude.com/product/overview), both in the web interface and via [Claude Code](https://code.claude.com/docs/en/overview) after ingesting the existing [ansible-configs](https://github.com/straysheep-dev/ansible-configs) codebase and reviewing the direction in a CLAUDE.md file.

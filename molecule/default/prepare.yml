@@ -1,0 +1,17 @@
+---
+# molecule/default/prepare.yml
+# SPDX-License-Identifier: MIT
+
+# Configure testing resources and install dependencies before testing.
+# https://docs.ansible.com/projects/molecule/workflow/?h=prepare+yml#actions
+
+- name: Prepare
+  hosts: all
+  gather_facts: true
+  tasks:
+    - name: Update package cache
+      ansible.builtin.package:
+        update_cache: true
+      when: ansible_facts['os_family'] == 'Debian'
+      become: true
+      become_method: ansible.builtin.sudo
