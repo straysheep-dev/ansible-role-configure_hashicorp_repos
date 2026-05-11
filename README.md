@@ -31,7 +31,7 @@ hashicorp_signing_key_fingerprints:
   - "798A EC65 4E5C 1542 8C8E 42EE AA16 FCBC A621 E701"
 ```
 
-`hashicorp_keyring_url`, ASCII-armored signing key download URL. Used by both Debian and RedHat paths. The same key bytes are served from both `apt.releases.hashicorp.com/gpg` and `rpm.releases.hashicorp.com/gpg`.
+`hashicorp_keyring_url`, signing key download URL. Used by both Debian and RedHat paths. The same keys are served from both `apt.releases.hashicorp.com/gpg` and `rpm.releases.hashicorp.com/gpg`.
 
 ```yaml
 hashicorp_keyring_url: "https://apt.releases.hashicorp.com/gpg"
@@ -50,7 +50,7 @@ hashicorp_keyring_path: "{{ '/etc/apt/keyrings/hashicorp-archive-keyring.asc' if
                             else '/etc/pki/rpm-gpg/RPM-GPG-KEY-hashicorp' if ansible_facts['os_family'] == 'RedHat' }}"
 ```
 
-`hashicorp_repo_url`, repository base URL. Used as `uris` in the apt `deb822_repository` task and as `baseurl` in the dnf `yum_repository` task. The yum macros (`$releasever`, `$basearch`) are intentional and resolved by the dnf layer at runtime.
+`hashicorp_repo_url`, repository base URL. Used as `uris` in the apt `deb822_repository` task and as `baseurl` in the dnf `yum_repository` task. The [repo variables](https://dnf5.readthedocs.io/en/latest/dnf5.conf.5.html#repo-variables) (`$releasever`, `$basearch`) are intentional and resolved by dnf at runtime.
 
 ```yaml
 hashicorp_repo_url: "{{ 'https://apt.releases.hashicorp.com' if ansible_facts['os_family'] == 'Debian'
@@ -69,7 +69,6 @@ hashicorp_pinned_packages:
   - terraform
   - vagrant
   - vault
-  - waypoint
 ```
 
 Dependencies

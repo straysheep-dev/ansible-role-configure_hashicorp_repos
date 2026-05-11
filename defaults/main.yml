@@ -14,7 +14,7 @@ hashicorp_signing_key_fingerprints:
   - "798A EC65 4E5C 1542 8C8E 42EE AA16 FCBC A621 E701"
 
 # HashiCorp keyring URL and paths.
-# The same key bytes are served from both apt.releases.hashicorp.com/gpg and rpm.releases.hashicorp.com/gpg;
+# The same keys are served from both apt.releases.hashicorp.com/gpg and rpm.releases.hashicorp.com/gpg;
 # either URL can be used on either OS family. The apt URL is the canonical default.
 hashicorp_keyring_url: "https://apt.releases.hashicorp.com/gpg"
 hashicorp_keyring_tmp: "/tmp/hashicorp-archive-keyring.asc"
