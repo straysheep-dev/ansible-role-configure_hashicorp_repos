@@ -11,7 +11,7 @@
 # Fingerprints are formatted as displayed by `gpg --with-fingerprint` (spaced groups of 4).
 # verify-signing-keys.yml accepts the 40 hex characters with or without spaces, case-insensitive.
 hashicorp_signing_key_fingerprints:
-  - "798A EC65 4E5C 1542 8C8E 42EE AA16 FCBC A621 E701"
+  - "D55C 0D1A C78A 8D81 26CB  631C FC9C A96A CA02 6560"
 
 # HashiCorp keyring URL and paths.
 # The same keys are served from both apt.releases.hashicorp.com/gpg and rpm.releases.hashicorp.com/gpg;
