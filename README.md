@@ -28,7 +28,7 @@ All variables are in `defaults/main.yml`. Key download and install paths are con
 
 ```yaml
 hashicorp_signing_key_fingerprints:
-  - "798A EC65 4E5C 1542 8C8E 42EE AA16 FCBC A621 E701"
+  - "D55C 0D1A C78A 8D81 26CB  631C FC9C A96A CA02 6560"
 ```
 
 `hashicorp_keyring_url`, signing key download URL. Used by both Debian and RedHat paths. The same keys are served from both `apt.releases.hashicorp.com/gpg` and `rpm.releases.hashicorp.com/gpg`.
